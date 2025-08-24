@@ -207,3 +207,4 @@ marimo/_lsp/
 __marimo__/
 
 prompt.txt
+claude_sessions/
