@@ -12,8 +12,8 @@ import io
 app = Flask(__name__)
 
 # Configuration
-STATE_FILE_PATH = "./test_claude_sessions/state.json"
-SESSIONS_BASE_DIR = "./test_claude_sessions"
+STATE_FILE_PATH = "./claude_sessions/state.json"
+SESSIONS_BASE_DIR = "./claude_sessions"
 LEASE_TTL_MINUTES = 30
 
 class SessionManager:
