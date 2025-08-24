@@ -19,11 +19,12 @@ RUN pip install --no-cache-dir pipenv
 WORKDIR /app
 
 # Copy dependency files
-COPY requirements.txt ./
+COPY Pipfile Pipfile.lock ./
 
-# Create and activate virtual environment, then install dependencies
+# Generate requirements.txt from Pipfile and install dependencies
 RUN python -m venv /app/.venv && \
     /app/.venv/bin/pip install --no-cache-dir --upgrade pip && \
+    pipenv requirements > requirements.txt && \
     /app/.venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Production stage
