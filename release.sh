@@ -42,8 +42,8 @@ REGISTRY_USER="akashgolpuria"
 REGISTRY_NAME="poacher"
 IMAGE_NAME="claude-share"
 
-echo "Building claude-share image for production..."
-docker-compose -f docker-compose.prod.yml build claude-share
+echo "Building claude-share image for production (linux/amd64)..."
+docker buildx build --platform linux/amd64 -t claude-share:latest .
 
 echo "Tagging image with commit hash: ${IMAGE_TAG}"
 docker tag claude-share:latest ${REGISTRY_USER}/${REGISTRY_NAME}:${IMAGE_NAME}_${IMAGE_TAG}
