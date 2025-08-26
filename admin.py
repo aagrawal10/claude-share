@@ -3,8 +3,7 @@
 Admin script for managing Claude sessions in the session leasing service.
 
 Usage:
-    python admin.py create <directory_or_tar> [--session-id <id>]
-    python admin.py update <session_id> <directory_or_tar>
+    python admin.py create <session_id>
     python admin.py list
     python admin.py status <session_id>
 """
@@ -12,8 +11,6 @@ Usage:
 import os
 import json
 import argparse
-import tarfile
-import shutil
 import fcntl
 from pathlib import Path
 from datetime import datetime
@@ -57,94 +54,28 @@ class AdminManager:
         """Get the directory path for a session"""
         return os.path.join(SESSIONS_BASE_DIR, session_id)
 
-    def extract_source(self, source_path, target_dir):
-        """Extract directory or tar file to target directory"""
-        source_path = Path(source_path)
-
-        if not source_path.exists():
-            raise FileNotFoundError(
-                f"Source path does not exist: {source_path}")
-
-        # Clean target directory
-        if os.path.exists(target_dir):
-            shutil.rmtree(target_dir)
-        os.makedirs(target_dir)
-
-        if source_path.is_dir():
-            # Copy directory contents
-            for item in source_path.iterdir():
-                if item.is_dir():
-                    shutil.copytree(item, os.path.join(target_dir, item.name))
-                else:
-                    shutil.copy2(item, target_dir)
-        elif (source_path.suffix in ['.tar', '.gz'] or
-              source_path.name.endswith('.tar.gz')):
-            # Extract tar file
-            with tarfile.open(source_path, 'r:*') as tar:
-                tar.extractall(path=target_dir)
-        else:
-            raise ValueError(
-                f"Unsupported source type. Expected directory or "
-                f"tar file, got: {source_path}")
-
-    def create_session(self, source_path, session_id=None):
-        """Create a new session from directory or tar file"""
+    def create_session(self, session_id):
+        """Create a new session entry in state file"""
         state = self.load_state()
 
-        if session_id is None:
-            session_id = self.get_next_session_id(state)
-        elif session_id in state:
+        if session_id in state:
             raise ValueError(f"Session ID {session_id} already exists")
 
         session_dir = self.get_session_directory(session_id)
 
-        try:
-            # Extract source to session directory
-            self.extract_source(source_path, session_dir)
-
-            # Add session to state
-            state[session_id] = {
-                'status': 'available',
-                'lease_acquired_at': None,
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
-
-            self.save_state(state)
-
-            print(f"Session {session_id} created successfully")
-            print(f"Session directory: {session_dir}")
-            return session_id
-
-        except Exception as e:
-            # Cleanup on failure
-            if os.path.exists(session_dir):
-                shutil.rmtree(session_dir)
-            raise e
-
-    def update_session(self, session_id, source_path):
-        """Update an existing session with new directory or tar file"""
-        state = self.load_state()
-
-        if session_id not in state:
-            raise ValueError(f"Session ID {session_id} does not exist")
-
-        if state[session_id].get('status') == 'locked':
-            print(f"Warning: Session {session_id} is currently locked. "
-                  f"Updating anyway.")
-
-        session_dir = self.get_session_directory(session_id)
-
-        # Extract source to session directory
-        self.extract_source(source_path, session_dir)
-
-        # Update session metadata
-        state[session_id]['updated_at'] = datetime.now().isoformat()
+        # Add session to state
+        state[session_id] = {
+            'status': 'available',
+            'lease_acquired_at': None,
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
 
         self.save_state(state)
 
-        print(f"Session {session_id} updated successfully")
+        print(f"Session {session_id} created successfully")
         print(f"Session directory: {session_dir}")
+        return session_id
 
     def list_sessions(self):
         """List all sessions with their status"""
@@ -207,17 +138,7 @@ def main():
     create_parser = subparsers.add_parser('create',
                                           help='Create a new session')
     create_parser.add_argument(
-        'source', help='Directory or tar file to use as session source')
-    create_parser.add_argument(
-        '--session-id', help='Specific session ID to use (optional)')
-
-    # Update command
-    update_parser = subparsers.add_parser('update',
-                                          help='Update an existing session')
-    update_parser.add_argument('session_id', help='Session ID to update')
-    update_parser.add_argument(
-        'source',
-        help='Directory or tar file to use as new session content')
+        'session_id', help='Session ID to create')
 
     # List command
     subparsers.add_parser('list', help='List all sessions')
@@ -237,9 +158,7 @@ def main():
 
     try:
         if args.command == 'create':
-            admin.create_session(args.source, args.session_id)
-        elif args.command == 'update':
-            admin.update_session(args.session_id, args.source)
+            admin.create_session(args.session_id)
         elif args.command == 'list':
             admin.list_sessions()
         elif args.command == 'status':
