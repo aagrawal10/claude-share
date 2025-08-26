@@ -3,6 +3,7 @@ version: '3.8'
 services:
   claude-share:
     build: .
+    platform: linux/amd64
     container_name: claude-share-prod
     ports:
       - "5000:5000"
